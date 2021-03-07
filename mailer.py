@@ -43,9 +43,7 @@ def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
         message.template_id = template_id
 
         response = sg.send(message)
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        print(f'--> {response.status_code}')
 
         time.sleep(1) # :3
 
