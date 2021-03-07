@@ -32,7 +32,6 @@ def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
         if all([matches(row, *parse(pred)) for pred in segment]):
             segment_rows.append(row)
 
-    print(sendgrid_key)
     sg = SendGridAPIClient(api_key=sendgrid_key)
 
     BATCH_SIZE = 500
@@ -42,8 +41,9 @@ def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
             to_emails=[x['email'] for x in batch])
         message.template_id = template_id
 
-        response = sg.send(message)
-        print(f'--> {response.status_code}')
+        if wet_run:
+            response = sg.send(message)
+            print(f'--> {response.status_code}')
 
         time.sleep(1) # :3
 
