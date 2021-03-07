@@ -1,20 +1,52 @@
 import click
 import csv
+import itertools
+from sendgrid import SendGridAPIClient, Mail
+
+def grouper(n, iterable):
+    it = iter(iterable)
+    while True:
+       chunk = tuple(itertools.islice(it, n))
+       if not chunk:
+           return
+       yield chunk
 
 @click.command()
 @click.argument('listcsv', type=click.File('r'))
+@click.argument('template-id')
 @click.option('-s', '--segment', multiple=True)
-def mail(listcsv, segment):
+@click.option('--sendgrid-key', envvar='SENDGRID_API_KEY')
+@click.option('--wet-run/--dry-run', default=False)
+def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
     rdr = csv.DictReader(listcsv)
-    # print(segment)
 
+    from_whom = ('squad@studentrelief.team', 'Student Relief Squad')
+
+    segment_rows = []
     for row in rdr:
         def parse(predicate):
             return [x.strip() for x in predicate.split('=')]
         def matches(row, k, v):
             return row.get(k) == v
         if all([matches(row, *parse(pred)) for pred in segment]):
-            print(row)
+            segment_rows.append(row)
+
+    print(sendgrid_key)
+    sg = SendGridAPIClient(api_key=sendgrid_key)
+
+    # print(segment_rows)
+    BATCH_SIZE = 500
+    for batch in grouper(BATCH_SIZE, segment_rows):
+        print(batch)
+        message = Mail(
+            from_email=from_whom,
+            to_emails=[x['email'] for x in batch])
+        message.template_id = template_id
+        response = sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+
 
 
 if __name__ == '__main__':
