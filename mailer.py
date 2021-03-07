@@ -2,6 +2,7 @@ import click
 import csv
 import itertools
 from sendgrid import SendGridAPIClient, Mail
+import time
 
 def grouper(n, iterable):
     it = iter(iterable)
@@ -34,19 +35,19 @@ def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
     print(sendgrid_key)
     sg = SendGridAPIClient(api_key=sendgrid_key)
 
-    # print(segment_rows)
     BATCH_SIZE = 500
     for batch in grouper(BATCH_SIZE, segment_rows):
-        print(batch)
         message = Mail(
             from_email=from_whom,
             to_emails=[x['email'] for x in batch])
         message.template_id = template_id
+
         response = sg.send(message)
         print(response.status_code)
         print(response.body)
         print(response.headers)
 
+        time.sleep(1) # :3
 
 
 if __name__ == '__main__':
