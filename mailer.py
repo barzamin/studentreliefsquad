@@ -1,8 +1,10 @@
 import click
 import csv
 import itertools
-from sendgrid import SendGridAPIClient, Mail
+from sendgrid import SendGridAPIClient, Mail, Personalization, To, Asm, GroupId
 import time
+import json
+from python_http_client import exceptions
 
 def grouper(n, iterable):
     it = iter(iterable)
@@ -21,7 +23,7 @@ def grouper(n, iterable):
 def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
     rdr = csv.DictReader(listcsv)
 
-    from_whom = ('squad@studentrelief.team', 'Student Relief Squad')
+    from_whom = ('squad@studentrelief.team', 'UW Student Relief Squad')
 
     segment_rows = []
     for row in rdr:
@@ -37,15 +39,25 @@ def mail(listcsv, template_id, segment, sendgrid_key, wet_run):
     sg = SendGridAPIClient(api_key=sendgrid_key)
 
     BATCH_SIZE = 500
-    for batch in grouper(BATCH_SIZE, segment_rows):
+    N_BATCHES = len(segment_rows)//BATCH_SIZE
+    for i, batch in enumerate(grouper(BATCH_SIZE, segment_rows)):
+        print(f'  [batch {i}/{N_BATCHES}]')
         message = Mail(
-            from_email=from_whom,
-            to_emails=[x['email'] for x in batch])
+            from_email=from_whom)
+        for recipient in batch:
+            pers = Personalization()
+            pers.add_email(To(recipient['email']))
+            message.add_personalization(pers)
         message.template_id = template_id
+        message.asm = Asm(GroupId(136302))
 
         if wet_run:
-            response = sg.send(message)
-            print(f'--> {response.status_code}')
+            try:
+                response = sg.send(message)
+                print(f'--> {response.status_code}')
+            except exceptions.BadRequestsError as e:
+                print(e.body)
+                exit()
 
         time.sleep(1) # :3
 
